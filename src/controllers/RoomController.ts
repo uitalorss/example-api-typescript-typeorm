@@ -3,6 +3,7 @@ import { roomRepository } from "../repositories/RoomRepository";
 import { subjectRepository } from "../repositories/SubjectRepository";
 import { ErrorDescription } from "typeorm";
 import { Subject } from "typeorm/persistence/Subject";
+import { addSubjectToRoom } from "../services/addSubjectToRoom";
 
 export class RoomController {
   async create(req: Request, res: Response) {
@@ -41,8 +42,7 @@ export class RoomController {
         return res.status(404).json({ message: "Disciplina não encontrada." });
       }
 
-      room.subjects.push(subject);
-
+      addSubjectToRoom(room, subject);
       await roomRepository.save(room);
 
       return res.status(204).send();
