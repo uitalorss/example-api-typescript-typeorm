@@ -4,64 +4,50 @@ import { subjectRepository } from "../repositories/SubjectRepository";
 import { ErrorDescription } from "typeorm";
 import { Subject } from "typeorm/persistence/Subject";
 import { addSubjectToRoom } from "../services/addSubjectToRoom";
+import { NotFoundError } from "../helpers/api-errors";
 
 export class RoomController {
   async create(req: Request, res: Response) {
     const { name } = req.body;
 
-    try {
-      const newRoom = roomRepository.create({ name });
-      await roomRepository.save(newRoom);
-      return res.status(201).send();
-    } catch (error) {
-      return res.status(500).json({ message: "Internal Server Error" });
-    }
+    const newRoom = roomRepository.create({ name });
+    await roomRepository.save(newRoom);
+    return res.status(201).send();
   }
 
   async bindSubjectToRoom(req: Request, res: Response) {
     const { idSubject } = req.body;
     const { idRoom } = req.params;
+    const room = await roomRepository.findOne({
+      where: { id: Number(idRoom) },
+      relations: {
+        subjects: true,
+      },
+    });
 
-    try {
-      const room = await roomRepository.findOne({
-        where: { id: Number(idRoom) },
-        relations: {
-          subjects: true,
-        },
-      });
-
-      if (!room) {
-        return res.status(404).json({ message: "Sala não encontrada." });
-      }
-
-      const subject = await subjectRepository.findOne({
-        where: { id: Number(idSubject) },
-      });
-
-      if (!subject) {
-        return res.status(404).json({ message: "Disciplina não encontrada." });
-      }
-
-      addSubjectToRoom(room, subject);
-      await roomRepository.save(room);
-
-      return res.status(204).send();
-    } catch (error) {
-      console.log(error);
-      return res.status(500).json({ message: "Internal Server Error" });
+    if (!room) {
+      throw new NotFoundError("Sala não encontrada.");
     }
+
+    const subject = await subjectRepository.findOne({
+      where: { id: Number(idSubject) },
+    });
+
+    if (!subject) {
+      throw new NotFoundError("Disciplina não encontrada.");
+    }
+
+    addSubjectToRoom(room, subject);
+    await roomRepository.save(room);
+    return res.status(204).send();
   }
 
   async list(req: Request, res: Response) {
-    try {
-      const rooms = await roomRepository.find({
-        relations: {
-          subjects: true,
-        },
-      });
-      return res.status(200).json(rooms);
-    } catch (error) {
-      return res.status(500).json({ message: "Internal Server Error" });
-    }
+    const rooms = await roomRepository.find({
+      relations: {
+        subjects: true,
+      },
+    });
+    return res.status(200).json(rooms);
   }
 }
